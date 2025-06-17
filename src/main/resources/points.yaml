@@ -1,0 +1,25 @@
+baseScore: 10
+loginPoints: 5
+welcomeBackBonus: 20
+welcomeBackGap: 7          # days
+commandWeight:
+  cmd:
+    default: 1.0         # run with default params
+    param: 1.2           # run with params → weighted via complexity
+parameterWeight:
+  simple: 1.0
+  regex: 3.0
+  wildcard: 2.0
+accessTierWeight:
+  dev: 0.8
+  udt: 1.0
+  prod: 1.2
+serverScaling:
+  function: log
+  logBase: 2
+streakMultiplier:
+  "1": 1.0
+  "3": 1.1
+  "7": 1.2
+  "14": 1.35
+  "30": 1.5

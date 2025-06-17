@@ -1,0 +1,8 @@
+spring:
+  data:
+    mongodb:
+      database: infraSight_test
+      host: localhost
+      port: 27017
+  config:
+    import: classpath:points.yaml
