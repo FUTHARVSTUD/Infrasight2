@@ -2,11 +2,17 @@ package com.wellsfargo.infrasight.controller;
 
 import com.wellsfargo.infrasight.domain.UserGamify;
 import com.wellsfargo.infrasight.repository.UserGamifyRepository;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Simple pass-through controller for inserting and fetching UserGamify docs.
+ */
 @RestController
-@RequestMapping("${apiOpenPrefix:/api}/gamify")   // uses apiOpenPrefix or falls back to /api
+@RequestMapping(path = "/api/gamify", 
+                consumes = MediaType.APPLICATION_JSON_VALUE, 
+                produces = MediaType.APPLICATION_JSON_VALUE)
 @CrossOrigin(origins = "http://localhost:3000")
 public class GamifyController {
 
@@ -16,18 +22,24 @@ public class GamifyController {
         this.userRepo = userRepo;
     }
 
-    /** POST /{prefix}/gamify/me   — insert or update a UserGamify document */
+    /**
+     * POST /api/gamify/me
+     * Accepts a JSON UserGamify and saves it to Mongo.
+     */
     @PostMapping("/me")
     public ResponseEntity<UserGamify> saveUser(@RequestBody UserGamify user) {
         UserGamify saved = userRepo.save(user);
         return ResponseEntity.ok(saved);
     }
 
-    /** GET /{prefix}/gamify/me/{userId} — fetch a UserGamify by ID */
+    /**
+     * GET /api/gamify/me/{userId}
+     * Fetches the UserGamify by its ID.
+     */
     @GetMapping("/me/{userId}")
-    public ResponseEntity<UserGamify> getUser(@PathVariable String userId) {
+    public ResponseEntity<UserGamify> getUser(@PathVariable("userId") String userId) {
         return userRepo.findById(userId)
                        .map(ResponseEntity::ok)
-                       .orElse(ResponseEntity.notFound().build());
+                       .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }
