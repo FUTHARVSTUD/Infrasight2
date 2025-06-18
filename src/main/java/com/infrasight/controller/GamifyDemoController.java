@@ -1,32 +1,48 @@
 @RestController
-@RequestMapping("/api/gamify")
+@RequestMapping("${apiOpenPrefix:/api}/gamify")
 @CrossOrigin(origins = "http://localhost:3000")
+@RequiredArgsConstructor
 public class GamifyController {
 
-    private final UserGamifyRepository userRepo;
+    private final GamificationService svc;
 
-    public GamifyController(UserGamifyRepository userRepo) {
-        this.userRepo = userRepo;
+    // 1. Login points
+    @PostMapping("/login")
+    public ResponseEntity<PointsResponse> loginPoints(
+            @AuthenticationPrincipal String userId) {
+        PointsResponse resp = svc.awardLoginPoints(userId);
+        return ResponseEntity.ok(resp);
     }
 
-    /**
-     * POST /api/gamify/me
-     * Saves whatever UserGamify JSON you send.
-     */
-    @PostMapping("/me")
-    public ResponseEntity<UserGamify> saveUser(@RequestBody UserGamify user) {
-        UserGamify saved = userRepo.save(user);
-        return ResponseEntity.ok(saved);
+    // 2. Command points
+    @PostMapping("/points")
+    public ResponseEntity<PointsResponse> commandPoints(
+            @RequestBody PointsRequest req,
+            @AuthenticationPrincipal String userId) {
+        PointsResponse resp = svc.awardCommandPoints(req, userId);
+        return ResponseEntity.ok(resp);
     }
 
-    /**
-     * GET /api/gamify/me/{userId}
-     * Retrieves the UserGamify document by ID.
-     */
+    // 3. Fetch “me”
     @GetMapping("/me/{userId}")
-    public ResponseEntity<UserGamify> getUser(@PathVariable String userId) {
-        return userRepo.findById(userId)
-                       .map(ResponseEntity::ok)
-                       .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<UserMe> getMe(@PathVariable String userId) {
+        UserMe me = svc.getUserMe(userId);
+        return ResponseEntity.of(Optional.ofNullable(me));
+    }
+
+    // 4. Leaderboard
+    @GetMapping("/leaderboard")
+    public ResponseEntity<List<LeaderboardEntry>> leaderboard(
+            @RequestParam(defaultValue="20") int limit,
+            @RequestParam(defaultValue="0") int offset,
+            @RequestParam(required=false) String department) {
+        List<LeaderboardEntry> board = svc.getLeaderboard(limit, offset, department);
+        return ResponseEntity.ok(board);
+    }
+
+    // 5. Badge catalog
+    @GetMapping("/badges")
+    public ResponseEntity<List<BadgeDef>> badges() {
+        return ResponseEntity.ok(svc.getAllBadges());
     }
 }
