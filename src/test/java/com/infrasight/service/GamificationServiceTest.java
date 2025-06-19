@@ -1,6 +1,7 @@
 package com.infrasight.service;
 
-import com.infrasight.configuration.GamifyConfig;
+import com.infrasight.db.model.GamifyConfigDoc;
+import com.infrasight.service.MongoConfigService;
 import com.infrasight.data.PointsRequest;
 import com.infrasight.db.model.UserGamify;
 import com.infrasight.db.repository.PointsLogRepository;
@@ -27,7 +28,7 @@ import static org.mockito.Mockito.*;
 class GamificationServiceTest {
 
     @Mock
-    private GamifyConfig config;
+    private MongoConfigService configService;
     
     @Mock
     private UserGamifyRepository userGamifyRepository;
@@ -39,9 +40,7 @@ class GamificationServiceTest {
     private GamificationService gamificationService;
 
     private UserGamify testUser;
-    private GamifyConfig.CommandWeight commandWeight;
-    private GamifyConfig.CommandWeight.Cmd cmd;
-    private GamifyConfig.ServerScaling serverScaling;
+    private GamifyConfigDoc config;
 
     @BeforeEach
     void setUp() {
@@ -50,41 +49,42 @@ class GamificationServiceTest {
         testUser.setTotalPoints(0);
         testUser.setStreakDays(0);
         
-        // Setup config mocks
-        commandWeight = new GamifyConfig.CommandWeight();
-        cmd = new GamifyConfig.CommandWeight.Cmd();
-        cmd.setDefault(1.0);
-        cmd.setParam(1.2);
-        commandWeight.setCmd(cmd);
-        
-        serverScaling = new GamifyConfig.ServerScaling();
-        serverScaling.setFunction("log");
-        serverScaling.setLogBase(2);
-        
+        // Build configuration document
+        config = new GamifyConfigDoc();
+        config.setBaseScore(10);
+        config.setLoginPoints(5);
+        config.setWelcomeBackBonus(20);
+        config.setWelcomeBackGap(7);
+
+        Map<String, Double> commandWeight = new HashMap<>();
+        commandWeight.put("default", 1.0);
+        commandWeight.put("param", 1.2);
+        config.setCommandWeight(commandWeight);
+
         Map<String, Double> parameterWeight = new HashMap<>();
         parameterWeight.put("simple", 1.0);
         parameterWeight.put("regex", 3.0);
         parameterWeight.put("wildcard", 2.0);
-        
+        config.setParameterWeight(parameterWeight);
+
         Map<String, Double> accessTierWeight = new HashMap<>();
         accessTierWeight.put("dev", 0.8);
         accessTierWeight.put("udt", 1.0);
         accessTierWeight.put("prod", 1.2);
-        
-        Map<String, Double> streakMultiplier = new HashMap<>();
-        streakMultiplier.put("1", 1.0);
-        streakMultiplier.put("3", 1.1);
-        streakMultiplier.put("7", 1.2);
-        
-        when(config.getLoginPoints()).thenReturn(5);
-        when(config.getWelcomeBackBonus()).thenReturn(20);
-        when(config.getWelcomeBackGap()).thenReturn(7);
-        when(config.getBaseScore()).thenReturn(10);
-        when(config.getCommandWeight()).thenReturn(commandWeight);
-        when(config.getParameterWeight()).thenReturn(parameterWeight);
-        when(config.getAccessTierWeight()).thenReturn(accessTierWeight);
-        when(config.getServerScaling()).thenReturn(serverScaling);
-        when(config.getStreakMultiplier()).thenReturn(streakMultiplier);
+        config.setAccessTierWeight(accessTierWeight);
+
+        GamifyConfigDoc.ServerScaling scaling = new GamifyConfigDoc.ServerScaling();
+        scaling.setFunction("log");
+        scaling.setLogBase(2);
+        config.setServerScaling(scaling);
+
+        Map<Integer, Double> streakMultiplier = new HashMap<>();
+        streakMultiplier.put(1, 1.0);
+        streakMultiplier.put(3, 1.1);
+        streakMultiplier.put(7, 1.2);
+        config.setStreakMultiplier(streakMultiplier);
+
+        when(configService.getConfig()).thenReturn(config);
     }
 
     @Test

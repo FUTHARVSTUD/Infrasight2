@@ -1,6 +1,7 @@
 package com.infrasight.service;
 
-import com.infrasight.configuration.GamifyConfig;
+import com.infrasight.db.model.GamifyConfigDoc;
+import com.infrasight.service.MongoConfigService;
 import com.infrasight.data.PointsRequest;
 import com.infrasight.db.model.PointsLog;
 import com.infrasight.db.model.UserGamify;
@@ -13,24 +14,24 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Optional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class GamificationService {
     
-    private final GamifyConfig config;
+    private final MongoConfigService configService;
     private final UserGamifyRepository userGamifyRepository;
     private final PointsLogRepository pointsLogRepository;
 
     public UserGamify awardLoginPoints(String userId) {
+        GamifyConfigDoc cfg = configService.getConfig();
         UserGamify user = getUserGamify(userId);
-        
-        int delta = config.getLoginPoints();
-        
-        if (isWelcomeBack(user.getLastActivity())) {
-            delta += config.getWelcomeBackBonus();
+
+        int delta = cfg.getLoginPoints();
+
+        if (isWelcomeBack(user.getLastActivity(), cfg.getWelcomeBackGap())) {
+            delta += cfg.getWelcomeBackBonus();
             log.info("Welcome back bonus awarded to user: {}", userId);
         }
         
@@ -58,18 +59,19 @@ public class GamificationService {
             return getUserGamify(userId);
         }
         
+        GamifyConfigDoc cfg = configService.getConfig();
         UserGamify user = getUserGamify(userId);
-        
-        int base = config.getBaseScore();
-        int complexity = complexityScore(request.getParameters());
-        
-        double commandWeight = (request.getParameters() == null || request.getParameters().isEmpty()) 
-            ? config.getCommandWeight().getCmd().getDefault()
-            : config.getCommandWeight().getCmd().getParam();
-            
-        double envWeight = config.getAccessTierWeight().getOrDefault(request.getEnvironment(), 1.0);
-        double serverScale = serverScale(request.getServers() != null ? request.getServers().size() : 1);
-        double streakMult = streakMultiplier(user.getStreakDays());
+
+        int base = cfg.getBaseScore();
+        int complexity = complexityScore(request.getParameters(), cfg);
+
+        double commandWeight = (request.getParameters() == null || request.getParameters().isEmpty())
+            ? cfg.getCommandWeight().getOrDefault("default", 1.0)
+            : cfg.getCommandWeight().getOrDefault("param", 1.0);
+
+        double envWeight = cfg.getAccessTierWeight().getOrDefault(request.getEnvironment(), 1.0);
+        double serverScale = serverScale(request.getServers() != null ? request.getServers().size() : 1, cfg);
+        double streakMult = streakMultiplier(user.getStreakDays(), cfg);
         
         int delta = (int) Math.ceil((base + complexity) * commandWeight * envWeight * serverScale * streakMult);
         
@@ -110,11 +112,11 @@ public class GamificationService {
                 });
     }
 
-    private double serverScale(int serverCount) {
+    private double serverScale(int serverCount, GamifyConfigDoc cfg) {
         if (serverCount <= 1) return 1.0;
-        
-        String function = config.getServerScaling().getFunction();
-        int logBase = config.getServerScaling().getLogBase();
+
+        String function = cfg.getServerScaling().getFunction();
+        int logBase = cfg.getServerScaling().getLogBase();
         
         if ("log".equals(function)) {
             return 1.0 + (Math.log(serverCount) / Math.log(logBase)) * 0.1;
@@ -123,15 +125,15 @@ public class GamificationService {
         return 1.0;
     }
 
-    private double streakMultiplier(int days) {
-        return config.getStreakMultiplier().entrySet().stream()
-                .filter(entry -> days >= Integer.parseInt(entry.getKey()))
-                .mapToDouble(entry -> entry.getValue())
+    private double streakMultiplier(int days, GamifyConfigDoc cfg) {
+        return cfg.getStreakMultiplier().entrySet().stream()
+                .filter(entry -> days >= entry.getKey())
+                .mapToDouble(Map.Entry::getValue)
                 .max()
                 .orElse(1.0);
     }
 
-    private int complexityScore(List<String> parameters) {
+    private int complexityScore(List<String> parameters, GamifyConfigDoc cfg) {
         if (parameters == null || parameters.isEmpty()) {
             return 0;
         }
@@ -139,21 +141,21 @@ public class GamificationService {
         return parameters.stream()
                 .mapToInt(param -> {
                     if (param.contains("*") || param.contains("?")) {
-                        return (int) (config.getParameterWeight().getOrDefault("wildcard", 2.0) * 5);
-                    } else if (param.matches(".*[\\[\\]\$$\$$\\{\\}\\^\\$\\|\\\\].*")) {
-                        return (int) (config.getParameterWeight().getOrDefault("regex", 3.0) * 5);
+                        return (int) (cfg.getParameterWeight().getOrDefault("wildcard", 2.0) * 5);
+                    } else if (param.matches(".*[\\[\\]\\$\\{\\}\\^\\$\\|\\\\].*")) {
+                        return (int) (cfg.getParameterWeight().getOrDefault("regex", 3.0) * 5);
                     } else {
-                        return (int) (config.getParameterWeight().getOrDefault("simple", 1.0) * 5);
+                        return (int) (cfg.getParameterWeight().getOrDefault("simple", 1.0) * 5);
                     }
                 })
                 .sum();
     }
 
-    private boolean isWelcomeBack(LocalDate lastActivity) {
+    private boolean isWelcomeBack(LocalDate lastActivity, int gap) {
         if (lastActivity == null) return true;
-        
+
         long daysBetween = ChronoUnit.DAYS.between(lastActivity, LocalDate.now());
-        return daysBetween >= config.getWelcomeBackGap();
+        return daysBetween >= gap;
     }
 
     private int updateStreak(LocalDate lastActivity, LocalDate today) {
