@@ -56,4 +56,104 @@ Cron Expression: A schedule syntax 0 5 0 * * * representing a daily run at 00:05
 IANA Time-Zone: A string like Asia/Kolkata or America/New_York used to localize dates.
 
 
+2. Data Models
+
+2.1 UserGamify Document
+
+Stores each user’s aggregated gamification state.
+
+@Document(collection = "user_gamify")
+public class UserGamify {
+    @Id private String userId;
+    private String name;
+    private String department;
+    private int totalPoints;
+    private int streakDays;
+    private Instant lastLoginUtc;
+    private String timeZoneId;
+    private Set<String> uniqueServers;
+    private int totalCommands;
+    private int prodCommands;
+    private List<String> badges;
+}
+
+userId: unique user identifier.
+
+totalPoints: current point balance.
+
+streakDays: number of consecutive daily logins in user’s local zone.
+
+lastLoginUtc & timeZoneId: for time-zone–aware daily checks.
+
+uniqueServers, totalCommands, prodCommands, badges: counters & awards.
+
+
+2.2 PointsLog Document
+
+Audit trail of every points transaction.
+
+@Document(collection = "points_log")
+public class PointsLog {
+    @Id private String id;
+    private String userId;
+    private String event;
+    private String environment;
+    private List<String> servers;
+    private int pointsDelta;
+    private int totalPoints;
+    private int streakDays;
+    private LocalDateTime timestamp;
+    private List<String> newBadges;
+}
+
+Each row records one event’s pointsDelta, post-credit totalPoints, streakDays, and any newBadges.
+
+
+2.3 RequestModel Document (Existing)
+
+Source data representing a command execution request.
+
+@Document(collection = "requests")
+public class RequestModel {
+    @Id private String requestId;
+    private String userId;
+    private String event;
+    private String environment;
+    private List<String> serverList;
+    private List<String> parameters;
+    private Instant finishedTimestamp;
+}
+
+Used by the nightly batch to compute command-based points.
+
+
+2.4 GamifyConfigDoc Document
+
+Container for all scoring rules and weights.
+
+@Document(collection = "properties")
+public class PropertiesDoc {
+    @Id private String id;           // "global"
+    private GamifyConfig gamification;
+    public static class GamifyConfig {
+        private int baseScore;
+        private int loginPoints;
+        private int welcomeBackBonus;
+        private int welcomeBackGap;
+        private Map<String,Double> commandWeight;
+        private Map<String,Double> parameterWeight;
+        private Map<String,Double> accessTierWeight;
+        private ServerScaling serverScaling;
+        private Map<Integer,Double> streakMultiplier;
+        private Map<String,BadgeDef> badges;
+    }
+}
+
+commandWeight, parameterWeight, accessTierWeight: maps of weights.
+
+serverScaling: scaling formula (log base N).
+
+streakMultiplier, badges: streak rewards & badge definitions.
+
+
 
