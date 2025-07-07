@@ -2,24 +2,24 @@
 
 1.1 Purpose & Scope
 
-The Gamification Layer in InfraSight is designed to increase end‑user engagement, promote consistent usage, and reward productive behavior by integrating a unified points and badges system directly into the existing InfraSight application. By tracking meaningful engineer activities—such as daily logins, command executions, and interaction with production environments—in a transparent, time‑zone‑aware way, we aim to:
+The Gamification Layer in InfraSight is designed to increase end-user engagement, promote consistent usage, and reward productive behavior by integrating a unified points and badges system directly into the existing InfraSight application. By tracking meaningful engineer activities—such as daily logins, command executions, and interaction with production environments—in a transparent, time-zone-aware way, we aim to:
 
 Encourage daily adoption of the InfraSight platform through daily login rewards and streak multipliers.
 
 Drive best practices by assigning differentiated points based on command complexity, environment tier, and number of servers touched.
 
-Recognize and celebrate high‑value contributions via badges (e.g., Server Centurion), leaderboards, and bonus awards for long hiatus returns.
+Recognize and celebrate high-value contributions via badges (e.g., Server Centurion), leaderboards, and bonus awards for long hiatus returns.
 
 Provide a flexible, configurable framework that can be extended or tuned by administrators without code changes, via a single source of truth in the properties collection.
 
 
 Scope:
 
-Data capture of user events (login, read‑only command executions) including parameters, server lists, and environment context.
+Data capture of user events (login, read-only command executions) including parameters, server lists, and environment context.
 
-Points calculation engine, applying base scores, complexity weights, server scaling, streak multipliers, and welcome‑back bonuses.
+Points calculation engine, applying base scores, complexity weights, server scaling, streak multipliers, and welcome-back bonuses.
 
-Time‑zone–aware logic so that daily boundaries align with each user’s local midnight rather than the server’s UTC clock.
+Time-zone–aware logic so that daily boundaries align with each user’s local midnight rather than the server’s UTC clock.
 
 Persistent storage in MongoDB for:
 • Aggregated user totals (user_gamify)
@@ -28,9 +28,32 @@ Persistent storage in MongoDB for:
 
 RESTful API surface (and optional composite endpoint) for awarding points, querying user stats, leaderboards, and badge catalogs.
 
-Nightly batch processor which can optionally defer all point calculations to off‑peak hours via the NightlyGamifyJob.
+Nightly batch processor which can optionally defer all point calculations to off-peak hours via the NightlyGamifyJob.
 
 
 This document will walk through the architecture, data models, service implementations, and API contracts needed to deliver these capabilities in a maintainable, testable, and extensible way.
+
+1.2 Glossary of Terms
+
+Daily Login: The action of authenticating into InfraSight, eligible for daily points.
+
+Streak Days: Consecutive days a user has logged in on their local calendar day boundary.
+
+Points Delta: The number of points awarded for a single event (login or command).
+
+Total Points: Aggregate point balance stored in the user_gamify document.
+
+Badge: A named reward triggered by meeting certain conditions (e.g. server_centurion).
+
+LeaderboardEntry: A DTO representing a user’s rank, total points, and badge count.
+
+GamifyConfigDoc: The MongoDB document storing all weights and scoring rules under _id: "default".
+
+PropertiesDoc: The MongoDB document (e.g. _id: "global") that may contain a nested gamification section if used.
+
+Cron Expression: A schedule syntax 0 5 0 * * * representing a daily run at 00:05 UTC.
+
+IANA Time-Zone: A string like Asia/Kolkata or America/New_York used to localize dates.
+
 
 
