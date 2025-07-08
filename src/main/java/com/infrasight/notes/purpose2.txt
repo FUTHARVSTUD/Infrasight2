@@ -8,6 +8,7 @@ import {
   Typography,
   Container,
   Box,
+  Stack,
 } from '@mui/material';
 
 function UserPointDisplay() {
@@ -26,63 +27,23 @@ function UserPointDisplay() {
       </Typography>
 
       {point ? (
-        <Card sx={{ backgroundColor: '#f5f5f5', boxShadow: 3 }}>
-          <CardContent>
-            <Box display="flex" flexDirection="row" flexWrap="wrap" gap={2}>
-              <Box
-                sx={{
-                  backgroundColor: '#e0f7fa',
-                  padding: 2,
-                  borderRadius: 2,
-                  minWidth: 100,
-                  textAlign: 'center',
-                }}
-              >
-                <Typography variant="subtitle1">Name</Typography>
-                <Typography variant="body1">{point.name}</Typography>
-              </Box>
-
-              <Box
-                sx={{
-                  backgroundColor: '#e8f5e9',
-                  padding: 2,
-                  borderRadius: 2,
-                  minWidth: 100,
-                  textAlign: 'center',
-                }}
-              >
-                <Typography variant="subtitle1">X</Typography>
-                <Typography variant="body1">{point.x}</Typography>
-              </Box>
-
-              <Box
-                sx={{
-                  backgroundColor: '#fff3e0',
-                  padding: 2,
-                  borderRadius: 2,
-                  minWidth: 100,
-                  textAlign: 'center',
-                }}
-              >
-                <Typography variant="subtitle1">Y</Typography>
-                <Typography variant="body1">{point.y}</Typography>
-              </Box>
-
-              <Box
-                sx={{
-                  backgroundColor: '#fce4ec',
-                  padding: 2,
-                  borderRadius: 2,
-                  minWidth: 100,
-                  textAlign: 'center',
-                }}
-              >
-                <Typography variant="subtitle1">Z</Typography>
-                <Typography variant="body1">{point.z}</Typography>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
+        <Stack direction="row" spacing={2}>
+          {[
+            { label: 'Name', value: point.name },
+            { label: 'X', value: point.x },
+            { label: 'Y', value: point.y },
+            { label: 'Z', value: point.z },
+          ].map((item) => (
+            <Card key={item.label} sx={{ minWidth: 120, textAlign: 'center', boxShadow: 3 }}>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  {item.label}
+                </Typography>
+                <Typography variant="h6">{item.value}</Typography>
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
       ) : (
         <Typography variant="body1">Loading...</Typography>
       )}
