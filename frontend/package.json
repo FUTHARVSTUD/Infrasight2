@@ -1,0 +1,21 @@
+{
+  "name": "gamification-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "13.4.12",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "@mui/material": "5.14.9",
+    "@mui/icons-material": "5.14.9",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@tanstack/react-query": "4.29.10",
+    "react-countup": "6.3.0"
+  }
+}
