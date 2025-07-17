@@ -1,0 +1,5 @@
+The InfraSight Gamification Layer is an enhancement to the existing InfraSight infrastructure management platform, designed to increase user engagement, encourage consistent platform usage, and provide transparent user activity tracking for operational and management visibility.
+
+Leveraging a flexible, configurable rules-based architecture, this gamification layer assigns points and badges to users based on their interactions within the application, such as daily logins, executing infrastructure queries, and maintaining usage streaks. It employs timezone-aware logic to ensure accurate point allocation and reward mechanisms for a global user base.
+
+The Gamification Layer is designed as a non-intrusive, scalable component that integrates seamlessly with the current InfraSight business logic and infrastructure. By aggregating user activities into clear, trackable metrics, the solution provides management and stakeholders with insightful analytics on user engagement patterns, adoption levels, and overall platform effectiveness.
