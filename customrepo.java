@@ -113,3 +113,29 @@ public class LeaderboardService {
         return new Page<>(entries, total, size, page * size);
     }
 }
+
+------------------------------
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+
+@RestController
+@RequestMapping("/api/gamify/leaderboard")
+@RequiredArgsConstructor
+public class LeaderboardController {
+
+    private final LeaderboardService leaderboardService;
+
+    @GetMapping("/weekly")
+    public Page<WeeklyLeaderboardEntry> getWeeklyLeaderboard(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime weekStart,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime weekEnd,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return leaderboardService.getWeeklyLeaderboard(weekStart, weekEnd, page, size);
+    }
+}
