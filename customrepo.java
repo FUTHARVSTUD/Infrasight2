@@ -179,3 +179,47 @@ public long countDistinctUsersInWeek(LocalDateTime weekStart, LocalDateTime week
     // For simplicity, return 0 here and handle filtering in service layer
     return 0;
 }
+
+------------------------------------
+
+public Page<WeeklyLeaderboardEntry> getWeeklyLeaderboard(
+        LocalDateTime weekStart,
+        LocalDateTime weekEnd,
+        int page,
+        int size,
+        String department // new param
+) {
+    List<WeeklyLeaderboardEntry> entries = pointsLogRepo.getWeeklyLeaderboard(weekStart, weekEnd, page, size, department);
+
+    // Batch-fetch user details
+    List<String> userIds = entries.stream()
+        .map(WeeklyLeaderboardEntry::getUserId)
+        .collect(Collectors.toList());
+    Map<String, UserGamify> userMap = StreamSupport.stream(userGamifyRepo.findAllById(userIds).spliterator(), false)
+        .collect(Collectors.toMap(UserGamify::getUserId, Function.identity()));
+
+    // Fill name/department
+    for (WeeklyLeaderboardEntry entry : entries) {
+        UserGamify user = userMap.get(entry.getUserId());
+        if (user != null) {
+            entry.setName(user.getName());
+            entry.setDepartment(user.getDepartment());
+        }
+    }
+
+    // Now filter by department
+    if (department != null && !department.isEmpty()) {
+        entries = entries.stream()
+                .filter(e -> department.equals(e.getDepartment()))
+                .collect(Collectors.toList());
+    }
+
+    // Assign rank
+    int startRank = page * size + 1;
+    IntStream.range(0, entries.size()).forEach(i -> entries.get(i).setRank(startRank + i));
+
+    // For total, you may want to run a second aggregation or just set to entries.size() for filtered
+    long total = entries.size();
+
+    return new Page<>(entries, total, size, page * size);
+}
