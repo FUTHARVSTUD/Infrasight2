@@ -57,3 +57,59 @@ public class PointsLogRepositoryCustomImpl implements PointsLogRepositoryCustom 
     }
 }
 
+-----------------------------------------
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+@Service
+@RequiredArgsConstructor
+public class LeaderboardService {
+
+    private final PointsLogRepository pointsLogRepo;
+    private final UserGamifyRepository userGamifyRepo;
+
+    public Page<WeeklyLeaderboardEntry> getWeeklyLeaderboard(
+            LocalDateTime weekStart,
+            LocalDateTime weekEnd,
+            int page,
+            int size
+    ) {
+        // 1. Get paginated weekly leaderboard (userId + weekPoints)
+        List<WeeklyLeaderboardEntry> entries = pointsLogRepo.getWeeklyLeaderboard(weekStart, weekEnd, page, size);
+
+        // 2. Batch-fetch user details
+        List<String> userIds = entries.stream()
+            .map(WeeklyLeaderboardEntry::getUserId)
+            .collect(Collectors.toList());
+        Map<String, UserGamify> userMap = userGamifyRepo.findAllById(userIds)
+            .stream()
+            .collect(Collectors.toMap(UserGamify::getUserId, Function.identity()));
+
+        // 3. Fill name/department in results
+        for (WeeklyLeaderboardEntry entry : entries) {
+            UserGamify user = userMap.get(entry.getUserId());
+            if (user != null) {
+                entry.setName(user.getName());
+                entry.setDepartment(user.getDepartment());
+            }
+        }
+
+        // 4. Assign rank (1-based across pages)
+        int startRank = page * size + 1;
+        IntStream.range(0, entries.size())
+            .forEach(i -> entries.get(i).setRank(startRank + i));
+
+        // 5. Get total for pagination
+        long total = pointsLogRepo.countDistinctUsersInWeek(weekStart, weekEnd);
+
+        // 6. Return as Page DTO
+        return new Page<>(entries, total, size, page * size);
+    }
+}
