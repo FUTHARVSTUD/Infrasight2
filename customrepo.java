@@ -223,3 +223,56 @@ public Page<WeeklyLeaderboardEntry> getWeeklyLeaderboard(
 
     return new Page<>(entries, total, size, page * size);
 }
+
+---------------------------------------
+
+public Page<WeeklyLeaderboardEntry> getWeeklyLeaderboard(
+        LocalDateTime weekStart,
+        LocalDateTime weekEnd,
+        int page,
+        int size,
+        String department) {
+
+    Map<String, Integer> userPoints = new HashMap<>();
+
+    // 1. Stream and aggregate points per user
+    try (Stream<PointsLog> logs = pointsLogRepo.streamByTimestampBetween(weekStart, weekEnd)) {
+        logs.forEach(log -> userPoints.merge(log.getUserId(), log.getPointsDelta(), Integer::sum));
+    }
+
+    // 2. Batch fetch user details
+    List<String> userIds = new ArrayList<>(userPoints.keySet());
+    Map<String, UserGamify> userMap = StreamSupport
+            .stream(userGamifyRepo.findAllById(userIds).spliterator(), false)
+            .collect(Collectors.toMap(UserGamify::getUserId, Function.identity()));
+
+    // 3. Map, filter by department, and collect to list
+    List<WeeklyLeaderboardEntry> entries = userPoints.entrySet().stream()
+        .map(e -> {
+            UserGamify user = userMap.get(e.getKey());
+            if (user == null) return null;
+            return new WeeklyLeaderboardEntry(
+                user.getUserId(),
+                user.getName(),
+                user.getDepartment(),
+                e.getValue() // weekPoints
+            );
+        })
+        .filter(Objects::nonNull)
+        .filter(entry -> department == null || department.equals(entry.getDepartment()))
+        .sorted(Comparator.comparingInt(WeeklyLeaderboardEntry::getWeekPoints).reversed())
+        .collect(Collectors.toList());
+
+    // 4. Pagination (calculate offsets)
+    int startIdx = page * size;
+    int endIdx = Math.min(startIdx + size, entries.size());
+    List<WeeklyLeaderboardEntry> pageEntries = (startIdx < endIdx) ? entries.subList(startIdx, endIdx) : List.of();
+
+    // 5. Assign rank
+    for (int i = 0; i < pageEntries.size(); i++) {
+        pageEntries.get(i).setRank(startIdx + i + 1);
+    }
+
+    // 6. Return as Page DTO
+    return new Page<>(pageEntries, entries.size(), size, startIdx);
+}
